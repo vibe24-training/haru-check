@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f3">
+  <title>오늘의 출석 | 하루의 작은 루틴</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202a24;
+      --muted: #7d877f;
+      --line: #e8ebe5;
+      --paper: #fff;
+      --canvas: #f6f7f3;
+      --green: #2f694c;
+      --green-dark: #24543b;
+      --green-soft: #eaf3ec;
+      --lime: #d7ed9f;
+      --orange: #e9a563;
+      --shadow: 0 16px 48px rgba(32, 50, 37, .07);
+      font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 87% 2%, rgba(216, 233, 190, .34), transparent 28rem),
+        var(--canvas);
+    }
+    button { font: inherit; }
+    .app { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0 54px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 17px; font-weight: 750; letter-spacing: -.5px; }
+    .brand-mark {
+      display: grid; width: 36px; height: 36px; place-items: center; border-radius: 12px;
+      color: #fff; background: var(--green);
+    }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .top-date { color: var(--muted); font-size: 13px; font-weight: 550; }
+    .intro { margin-bottom: 28px; }
+    .eyebrow { margin: 0 0 10px; color: var(--green); font-size: 12px; font-weight: 750; letter-spacing: 1.5px; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(29px, 4vw, 40px); letter-spacing: -1.8px; line-height: 1.2; }
+    .subtitle { margin: 10px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .9fr); gap: 22px; align-items: start; }
+    .panel { border: 1px solid rgba(226, 231, 222, .8); border-radius: 22px; background: var(--paper); box-shadow: var(--shadow); }
+    .calendar-panel { padding: 26px 28px 24px; }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .panel-heading h2 { margin: 0; font-size: 17px; letter-spacing: -.45px; }
+    .month-control { display: flex; align-items: center; gap: 5px; }
+    .month-label { min-width: 96px; text-align: center; font-size: 15px; font-weight: 700; }
+    .icon-button {
+      display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 10px;
+      color: #606b62; background: transparent; cursor: pointer; transition: background .18s, transform .18s;
+    }
+    .icon-button:hover { background: #f1f4ef; }
+    .icon-button:active { transform: scale(.94); }
+    .icon-button svg { width: 17px; height: 17px; }
+    .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    .weekdays { margin-bottom: 9px; }
+    .weekdays span { padding: 8px 0; color: #9aa29a; text-align: center; font-size: 11px; font-weight: 700; }
+    .weekdays span:first-child { color: #d18278; }
+    .weekdays span:last-child { color: #8299ba; }
+    .days { row-gap: 5px; }
+    .day {
+      position: relative; display: flex; min-height: 62px; align-items: center; justify-content: flex-start;
+      flex-direction: column; gap: 6px; padding: 8px 4px 5px; border: 1px solid transparent;
+      border-radius: 12px; color: var(--ink); background: transparent; cursor: pointer;
+      transition: background .16s, border-color .16s, transform .16s;
+    }
+    .day:hover { background: #f5f7f3; }
+    .day:active { transform: scale(.96); }
+    .day-number { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 50%; font-size: 13px; }
+    .day.outside { color: #c5cbc4; }
+    .day.today .day-number { color: white; background: var(--green); font-weight: 750; }
+    .day.selected:not(.today) { border-color: #b7cfbd; background: #f3f8f3; }
+    .day.checked:not(.today) .day-number { color: var(--green-dark); background: var(--green-soft); font-weight: 700; }
+    .day-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
+    .day.today .day-dot { background: var(--lime); }
+    .day:disabled { cursor: default; }
+    .calendar-legend { display: flex; gap: 16px; margin-top: 20px; padding-top: 17px; border-top: 1px solid #f0f1ed; }
+    .legend-item { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .legend-dot.today-dot { width: 10px; height: 10px; background: var(--green); }
+    .side { display: grid; gap: 17px; }
+    .checkin-card {
+      position: relative; overflow: hidden; min-height: 273px; padding: 25px;
+      color: white; background: var(--green); box-shadow: 0 18px 38px rgba(47, 105, 76, .2);
+    }
+    .checkin-card::after {
+      position: absolute; top: -72px; right: -56px; width: 210px; height: 210px; border: 1px solid rgba(255,255,255,.13);
+      border-radius: 50%; box-shadow: 0 0 0 24px rgba(255,255,255,.04), 0 0 0 52px rgba(255,255,255,.035);
+      content: "";
+    }
+    .card-label { position: relative; z-index: 1; margin: 0 0 17px; color: #c6ddcb; font-size: 12px; font-weight: 650; }
+    .checkin-card h2 { position: relative; z-index: 1; margin: 0; max-width: 260px; font-size: 23px; letter-spacing: -.8px; line-height: 1.45; }
+    .checkin-card .card-sub { position: relative; z-index: 1; margin: 8px 0 22px; color: #d1e1d4; font-size: 12px; }
+    .checkin-button {
+      position: relative; z-index: 1; display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; gap: 8px;
+      border: 0; border-radius: 12px; color: var(--green-dark); background: var(--lime); cursor: pointer;
+      font-size: 14px; font-weight: 750; transition: background .18s, transform .18s;
+    }
+    .checkin-button:hover { background: #e2f5b5; }
+    .checkin-button:active { transform: scale(.98); }
+    .checkin-button:disabled { color: #315a3f; background: #c1d9c4; cursor: default; }
+    .checkin-button svg { width: 17px; height: 17px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card { min-height: 108px; padding: 17px 18px; }
+    .stat-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
+    .stat-label svg { width: 14px; height: 14px; color: #87a98e; }
+    .stat-value { display: flex; align-items: baseline; gap: 5px; margin-top: 12px; font-size: 26px; font-weight: 750; letter-spacing: -.9px; }
+    .stat-value small { color: var(--muted); font-size: 12px; font-weight: 550; letter-spacing: 0; }
+    .quote { display: flex; gap: 13px; align-items: flex-start; padding: 18px 20px; border: 1px solid #e8eadf; border-radius: 17px; background: #f4f4ec; }
+    .quote-icon { flex: 0 0 auto; display: grid; width: 31px; height: 31px; place-items: center; border-radius: 10px; color: #8d9556; background: #e9edcf; font-size: 18px; }
+    .quote p { margin: 1px 0 0; color: #65705e; font-size: 12px; line-height: 1.65; }
+    .quote strong { display: block; margin-bottom: 3px; color: #44523f; font-size: 12px; }
+    .feedback { min-height: 18px; margin: 12px 0 0; color: #dcebdc; font-size: 11px; text-align: center; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    button:focus-visible { outline: 3px solid #e2b569; outline-offset: 3px; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 32px, 540px); padding-top: 23px; }
+      .topbar { margin-bottom: 30px; }
+      .layout { grid-template-columns: 1fr; gap: 17px; }
+      .calendar-panel { padding: 22px 18px 20px; }
+      .day { min-height: 57px; }
+      .side { grid-row: 1; }
+      .checkin-card { min-height: auto; padding: 22px; }
+      .checkin-card h2 { max-width: 100%; font-size: 21px; }
+      .checkin-card .card-sub { margin-bottom: 17px; }
+      .quote { display: none; }
+      .stats { gap: 10px; }
+      .stat-card { min-height: 97px; padding: 14px 16px; }
+      .stat-value { margin-top: 9px; font-size: 24px; }
+    }
+    @media (max-width: 380px) {
+      .app { width: calc(100% - 24px); }
+      .calendar-panel { padding-right: 12px; padding-left: 12px; }
+      .day { min-height: 51px; padding-top: 6px; }
+      .day-number { width: 27px; height: 27px; }
+      .calendar-legend { gap: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="m5 12.5 4.2 4.2L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        하루체크
+      </div>
+      <div class="top-date" id="topDate"></div>
+    </header>
+
+    <section class="intro" aria-labelledby="pageTitle">
+      <p class="eyebrow">YOUR DAILY MOMENT</p>
+      <h1 id="pageTitle">꾸준함이 만드는<br>작은 변화</h1>
+      <p class="subtitle">오늘도 나와의 약속을 지켜볼까요?</p>
+    </section>
+
+    <div class="layout">
+      <section class="panel calendar-panel" aria-labelledby="calendarTitle">
+        <div class="panel-heading">
+          <h2 id="calendarTitle">출석 달력</h2>
+          <div class="month-control">
+            <button class="icon-button" id="prevMonth" type="button" aria-label="이전 달">
+              <svg viewBox="0 0 24 24" fill="none"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <span class="month-label" id="monthLabel" aria-live="polite"></span>
+            <button class="icon-button" id="nextMonth" type="button" aria-label="다음 달">
+              <svg viewBox="0 0 24 24" fill="none"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="weekdays" aria-hidden="true">
+          <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+        </div>
+        <div class="days" id="calendarDays" role="grid" aria-label="출석 달력 날짜"></div>
+        <div class="calendar-legend" aria-label="달력 범례">
+          <span class="legend-item"><i class="legend-dot"></i>출석 완료</span>
+          <span class="legend-item"><i class="legend-dot today-dot"></i>오늘</span>
+        </div>
+      </section>
+
+      <aside class="side" aria-label="출석 요약">
+        <section class="panel checkin-card" aria-labelledby="checkinTitle">
+          <p class="card-label" id="selectedDateLabel">오늘의 출석</p>
+          <h2 id="checkinTitle">작은 한 걸음,<br>오늘도 함께해요</h2>
+          <p class="card-sub" id="checkinSub">출석 버튼을 눌러 오늘의 기록을 남겨보세요.</p>
+          <button class="checkin-button" id="checkinButton" type="button">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="buttonText">오늘 출석하기</span>
+          </button>
+          <p class="feedback" id="feedback" aria-live="polite"></p>
+        </section>
+        <div class="stats">
+          <section class="panel stat-card" aria-label="연속 출석">
+            <div class="stat-label">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3c1.4 3.2-.5 4.8-.5 4.8S15 8.7 15 13a3 3 0 0 1-6 0c0-1.6.9-2.8 1.7-3.5C7.2 10.6 6 13 6 15.4A6 6 0 0 0 18 15c0-5.3-3-9.2-6-12Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              연속 출석
+            </div>
+            <div class="stat-value"><span id="streakCount">0</span><small>일</small></div>
+          </section>
+          <section class="panel stat-card" aria-label="이번 달 출석">
+            <div class="stat-label">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 3v4m8-4v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              이번 달 출석
+            </div>
+            <div class="stat-value"><span id="monthCount">0</span><small>일</small></div>
+          </section>
+        </div>
+        <div class="quote">
+          <span class="quote-icon" aria-hidden="true">✦</span>
+          <p><strong>오늘의 한마디</strong>작은 일도 매일 하면 위대한 일이 된다.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const STORAGE_KEY = "haru-check-attendance-v1";
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isoDate = date => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+      const formatDate = date => new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric", month: "long", day: "numeric", weekday: "long"
+      }).format(date);
+      const saved = (() => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+          return Array.isArray(parsed) ? parsed.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const attendance = new Set(saved);
+      let shownMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      let selectedDate = new Date(today);
+
+      const calendarDays = document.getElementById("calendarDays");
+      const monthLabel = document.getElementById("monthLabel");
+      const selectedDateLabel = document.getElementById("selectedDateLabel");
+      const checkinTitle = document.getElementById("checkinTitle");
+      const checkinSub = document.getElementById("checkinSub");
+      const checkinButton = document.getElementById("checkinButton");
+      const buttonText = document.getElementById("buttonText");
+      const feedback = document.getElementById("feedback");
+
+      document.getElementById("topDate").textContent = formatDate(today);
+
+      function updateStats() {
+        const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-`;
+        document.getElementById("monthCount").textContent = [...attendance].filter(day => day.startsWith(currentMonth)).length;
+        let streak = 0;
+        const cursor = new Date(today);
+        if (!attendance.has(isoDate(cursor))) cursor.setDate(cursor.getDate() - 1);
+        while (attendance.has(isoDate(cursor))) {
+          streak += 1;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        document.getElementById("streakCount").textContent = streak;
+      }
+
+      function updateCheckinCard() {
+        const isToday = isoDate(selectedDate) === isoDate(today);
+        const isFuture = selectedDate > today;
+        const checked = attendance.has(isoDate(selectedDate));
+        selectedDateLabel.textContent = isToday ? "오늘의 출석" : formatDate(selectedDate);
+        if (checked) {
+          checkinTitle.innerHTML = "오늘의 약속을<br>지켰어요!";
+          checkinSub.textContent = isToday ? "멋져요! 내일도 이 순간을 이어가요." : "출석 완료한 날이에요.";
+        } else if (isFuture) {
+          checkinTitle.innerHTML = "다가올 하루도<br>기대해 주세요";
+          checkinSub.textContent = "미래 날짜에는 출석할 수 없어요.";
+        } else if (!isToday) {
+          checkinTitle.innerHTML = "차곡차곡 쌓이는<br>나만의 기록";
+          checkinSub.textContent = "오늘 날짜를 선택해 출석을 기록해 보세요.";
+        } else {
+          checkinTitle.innerHTML = "작은 한 걸음,<br>오늘도 함께해요";
+          checkinSub.textContent = "출석 버튼을 눌러 오늘의 기록을 남겨보세요.";
+        }
+        checkinButton.disabled = !isToday || checked;
+        buttonText.textContent = checked ? "오늘 출석 완료" : isToday ? "오늘 출석하기" : "오늘 날짜를 선택해 주세요";
+        feedback.textContent = "";
+      }
+
+      function renderCalendar() {
+        const year = shownMonth.getFullYear();
+        const month = shownMonth.getMonth();
+        monthLabel.textContent = `${year}년 ${month + 1}월`;
+        calendarDays.replaceChildren();
+        const firstWeekday = new Date(year, month, 1).getDay();
+        const gridStart = new Date(year, month, 1 - firstWeekday);
+
+        for (let index = 0; index < 42; index += 1) {
+          const date = new Date(gridStart);
+          date.setDate(gridStart.getDate() + index);
+          const key = isoDate(date);
+          const isToday = key === isoDate(today);
+          const isSelected = key === isoDate(selectedDate);
+          const checked = attendance.has(key);
+          const inMonth = date.getMonth() === month;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "day";
+          if (!inMonth) button.classList.add("outside");
+          if (isToday) button.classList.add("today");
+          if (isSelected) button.classList.add("selected");
+          if (checked) button.classList.add("checked");
+          button.setAttribute("role", "gridcell");
+          button.setAttribute("aria-label", `${formatDate(date)}${checked ? ", 출석 완료" : ""}${isToday ? ", 오늘" : ""}`);
+          button.setAttribute("aria-pressed", String(isSelected));
+          button.innerHTML = `<span class="day-number">${date.getDate()}</span>${checked ? '<i class="day-dot" aria-hidden="true"></i>' : ""}`;
+          button.addEventListener("click", () => {
+            selectedDate = date;
+            updateCheckinCard();
+            renderCalendar();
+          });
+          calendarDays.append(button);
+        }
+        updateCheckinCard();
+      }
+
+      document.getElementById("prevMonth").addEventListener("click", () => {
+        shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() - 1, 1);
+        renderCalendar();
+      });
+      document.getElementById("nextMonth").addEventListener("click", () => {
+        shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() + 1, 1);
+        renderCalendar();
+      });
+      checkinButton.addEventListener("click", () => {
+        const key = isoDate(today);
+        if (isoDate(selectedDate) !== key || attendance.has(key)) return;
+        attendance.add(key);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify([...attendance]));
+        } catch {
+          feedback.textContent = "저장 공간을 사용할 수 없어 이번 기록은 저장되지 않았어요.";
+          attendance.delete(key);
+          updateCheckinCard();
+          return;
+        }
+        updateStats();
+        renderCalendar();
+        feedback.textContent = "오늘의 출석을 기록했어요. 잘했어요!";
+      });
+
+      updateStats();
+      renderCalendar();
+    })();
+  </script>
+</body>
+</html>
